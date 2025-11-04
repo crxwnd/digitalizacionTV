@@ -1,6 +1,8 @@
+// backend/src/routes/areas.routes.ts
 import { Router } from 'express';
 import {
-  getAreas,
+  getAllAreas,
+  getAreaById,
   createArea,
   updateArea,
   deleteArea,
@@ -9,12 +11,22 @@ import { authenticate, authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
-// Todos los usuarios autenticados pueden ver áreas
-router.get('/', authenticate, getAreas);
+// 🔒 Todas las rutas requieren autenticación
+router.use(authenticate);
 
-// Solo Admin puede crear/editar/eliminar áreas
-router.post('/', authenticate, authorizeRoles('ADMIN'), createArea);
-router.put('/:id', authenticate, authorizeRoles('ADMIN'), updateArea);
-router.delete('/:id', authenticate, authorizeRoles('ADMIN'), deleteArea);
+// 📋 Listar áreas (ADMIN y MANAGER)
+router.get('/', authorizeRoles('ADMIN', 'MANAGER'), getAllAreas);
+
+// 🔍 Obtener área por ID (ADMIN y MANAGER)
+router.get('/:id', authorizeRoles('ADMIN', 'MANAGER'), getAreaById);
+
+// ➕ Crear área (solo ADMIN)
+router.post('/', authorizeRoles('ADMIN'), createArea);
+
+// ✏️ Actualizar área (ADMIN y MANAGER)
+router.put('/:id', authorizeRoles('ADMIN', 'MANAGER'), updateArea);
+
+// 🗑️ Eliminar área (solo ADMIN)
+router.delete('/:id', authorizeRoles('ADMIN'), deleteArea);
 
 export default router;

@@ -1,10 +1,12 @@
+// backend/src/controllers/areas.controller.ts
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 
-export const getAreas = async (req: AuthRequest, res: Response): Promise<void> => {
+// 📋 Listar áreas (ADMIN ve todas, MANAGER solo las suyas)
+export const getAllAreas = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userRole = req.user?.role;
     const userId = req.user?.id;
@@ -22,7 +24,15 @@ export const getAreas = async (req: AuthRequest, res: Response): Promise<void> =
               email: true,
             },
           },
-          screens: true,
+          screens: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              online: true,
+              approved: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -42,7 +52,15 @@ export const getAreas = async (req: AuthRequest, res: Response): Promise<void> =
               email: true,
             },
           },
-          screens: true,
+          screens: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              online: true,
+              approved: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -52,20 +70,88 @@ export const getAreas = async (req: AuthRequest, res: Response): Promise<void> =
 
     res.json(areas);
   } catch (error) {
-    console.error('Error al obtener áreas:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    console.error('Error al listar áreas:', error);
+    res.status(500).json({ error: 'Error al listar áreas' });
   }
 };
 
+// 🔍 Obtener área por ID
+export const getAreaById = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+
+    const area = await prisma.area.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        screens: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            ip: true,
+            online: true,
+            approved: true,
+            lastHeartbeat: true,
+            currentContent: true,
+          },
+        },
+      },
+    });
+
+    if (!area) {
+      res.status(404).json({ error: 'Área no encontrada' });
+      return;
+    }
+
+    // Si es MANAGER, verificar que sea su área
+    if (userRole === 'MANAGER' && area.managerId !== userId) {
+      res.status(403).json({ error: 'No tienes permiso para ver esta área' });
+      return;
+    }
+
+    res.json(area);
+  } catch (error) {
+    console.error('Error al obtener área:', error);
+    res.status(500).json({ error: 'Error al obtener área' });
+  }
+};
+
+// ➕ Crear nueva área (solo ADMIN)
 export const createArea = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, description, managerId } = req.body;
 
+    // Validar datos requeridos
     if (!name || !managerId) {
-      res.status(400).json({ error: 'Nombre y responsable son requeridos' });
+      res.status(400).json({ error: 'Nombre y manager son requeridos' });
       return;
     }
 
+    // Verificar que el manager existe y es MANAGER
+    const manager = await prisma.user.findUnique({
+      where: { id: managerId },
+    });
+
+    if (!manager) {
+      res.status(404).json({ error: 'Manager no encontrado' });
+      return;
+    }
+
+    if (manager.role !== 'MANAGER') {
+      res.status(400).json({ error: 'El usuario seleccionado no es un Manager' });
+      return;
+    }
+
+    // Crear área
     const area = await prisma.area.create({
       data: {
         name,
@@ -86,22 +172,63 @@ export const createArea = async (req: AuthRequest, res: Response): Promise<void>
     res.status(201).json(area);
   } catch (error) {
     console.error('Error al crear área:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    res.status(500).json({ error: 'Error al crear área' });
   }
 };
 
+// ✏️ Actualizar área
 export const updateArea = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { name, description, managerId } = req.body;
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
 
-    const area = await prisma.area.update({
+    // Verificar que el área existe
+    const existingArea = await prisma.area.findUnique({
       where: { id: parseInt(id) },
-      data: {
-        name,
-        description,
-        managerId,
-      },
+    });
+
+    if (!existingArea) {
+      res.status(404).json({ error: 'Área no encontrada' });
+      return;
+    }
+
+    // Si es MANAGER, verificar que sea su área
+    if (userRole === 'MANAGER' && existingArea.managerId !== userId) {
+      res.status(403).json({ error: 'No tienes permiso para editar esta área' });
+      return;
+    }
+
+    // Preparar datos de actualización
+    const updateData: any = {};
+
+    if (name) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+
+    // Solo ADMIN puede cambiar el manager
+    if (managerId && userRole === 'ADMIN') {
+      const manager = await prisma.user.findUnique({
+        where: { id: managerId },
+      });
+
+      if (!manager) {
+        res.status(404).json({ error: 'Manager no encontrado' });
+        return;
+      }
+
+      if (manager.role !== 'MANAGER') {
+        res.status(400).json({ error: 'El usuario seleccionado no es un Manager' });
+        return;
+      }
+
+      updateData.managerId = managerId;
+    }
+
+    // Actualizar área
+    const updatedArea = await prisma.area.update({
+      where: { id: parseInt(id) },
+      data: updateData,
       include: {
         manager: {
           select: {
@@ -110,20 +237,52 @@ export const updateArea = async (req: AuthRequest, res: Response): Promise<void>
             email: true,
           },
         },
+        screens: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            online: true,
+          },
+        },
       },
     });
 
-    res.json(area);
+    res.json(updatedArea);
   } catch (error) {
     console.error('Error al actualizar área:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    res.status(500).json({ error: 'Error al actualizar área' });
   }
 };
 
+// 🗑️ Eliminar área (solo ADMIN)
 export const deleteArea = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
+    // Verificar que el área existe
+    const area = await prisma.area.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        screens: true,
+      },
+    });
+
+    if (!area) {
+      res.status(404).json({ error: 'Área no encontrada' });
+      return;
+    }
+
+    // Verificar si tiene pantallas asociadas
+    if (area.screens.length > 0) {
+      res.status(400).json({ 
+        error: 'No se puede eliminar un área con pantallas asociadas',
+        screensCount: area.screens.length,
+      });
+      return;
+    }
+
+    // Eliminar área
     await prisma.area.delete({
       where: { id: parseInt(id) },
     });
@@ -131,6 +290,6 @@ export const deleteArea = async (req: AuthRequest, res: Response): Promise<void>
     res.json({ message: 'Área eliminada correctamente' });
   } catch (error) {
     console.error('Error al eliminar área:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    res.status(500).json({ error: 'Error al eliminar área' });
   }
 };

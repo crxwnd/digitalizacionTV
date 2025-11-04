@@ -1,20 +1,27 @@
+// backend/src/routes/users.routes.ts
 import { Router } from 'express';
 import {
-  getUsers,
+  getAllUsers,
+  getUserById,
   createUser,
   updateUser,
   deleteUser,
+  toggleUserStatus,
 } from '../controllers/users.controller';
 import { authenticate, authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
-// Solo Admin puede gestionar usuarios
-router.use(authenticate, authorizeRoles('ADMIN'));
+// 🔒 Todas las rutas requieren autenticación y rol ADMIN
+router.use(authenticate);
+router.use(authorizeRoles('ADMIN'));
 
-router.get('/', getUsers);
-router.post('/', createUser);
-router.put('/:id', updateUser);
-router.delete('/:id', deleteUser);
+// 📋 CRUD de usuarios
+router.get('/', getAllUsers);              // Listar todos
+router.get('/:id', getUserById);           // Obtener por ID
+router.post('/', createUser);              // Crear nuevo
+router.put('/:id', updateUser);            // Actualizar
+router.delete('/:id', deleteUser);         // Eliminar
+router.patch('/:id/toggle', toggleUserStatus); // Activar/Desactivar
 
 export default router;

@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 
 // Importar rutas
 import authRoutes from './routes/auth.routes';
+import usersRoutes from './routes/users.routes';
+import areasRoutes from './routes/areas.routes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
