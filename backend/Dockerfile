@@ -1,36 +1,32 @@
-# Build stage
-FROM node:20-slim AS builder
-WORKDIR /usr/src/app
-
-# Instalar OpenSSL
-RUN apt-get update -y && apt-get install -y openssl
-
-COPY package*.json ./
-RUN npm ci --silent
-
-COPY . .
-RUN npx prisma generate
-RUN npm run build || echo "No build step defined"
-
-# Production stage
+# backend/Dockerfile
 FROM node:20-slim
+
 WORKDIR /usr/src/app
 
-# Instalar OpenSSL en producción también
+# Instalar OpenSSL (requerido por Prisma)
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-ENV NODE_ENV=production
-
+# Copiar package files
 COPY package*.json ./
-RUN npm ci --production --silent || true
 
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/prisma ./prisma
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
+# Instalar dependencias (usar npm install en lugar de ci para desarrollo)
+RUN npm install --silent
 
+# Copiar código fuente
+COPY . .
+
+# Generar Prisma Client
+RUN npx prisma generate
+
+# Compilar TypeScript
+RUN npm run build || echo "No build step defined"
+
+# Copiar entrypoint
 COPY entrypoint.sh /usr/src/app/entrypoint.sh
 RUN chmod +x /usr/src/app/entrypoint.sh
 
+ENV NODE_ENV=development
+
 EXPOSE 5000
+
 CMD ["sh", "/usr/src/app/entrypoint.sh"]

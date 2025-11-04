@@ -9,7 +9,7 @@ function HomePage() {
           Sistema de Señalización Digital
         </h1>
         <p className="text-gray-600 mb-8 text-center">
-          Gestiona tus pantallas digitales desde un solo lugar
+          Gestiona las pantallas digitales desde un solo lugar
         </p>
         <div className="space-y-4">
           <Link
