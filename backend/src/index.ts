@@ -7,6 +7,10 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes';
 import usersRoutes from './routes/users.routes';
 import areasRoutes from './routes/areas.routes';
+import screensRoutes from './routes/screens.routes';
+
+// Importar utilidades
+import { startOfflineChecker } from './utils/checkOfflineScreens';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,6 +35,15 @@ app.get('/health', (_req, res) => {
 
 // Rutas de autenticación
 app.use('/api/auth', authRoutes);
+
+// Rutas de usuarios (solo ADMIN)
+app.use('/api/users', usersRoutes);
+
+// Rutas de áreas (ADMIN y MANAGER)
+app.use('/api/areas', areasRoutes);
+
+// Rutas de pantallas (ADMIN y MANAGER)
+app.use('/api/screens', screensRoutes);
 
 // Ruta 404
 app.use((_req, res) => {
