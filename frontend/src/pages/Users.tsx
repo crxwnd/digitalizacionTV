@@ -323,7 +323,8 @@ const UserModal: React.FC<{
             </label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as 'ADMIN' | 'MANAGER' | 'PLAYER' })}
+              
               className="input-glass"
             >
               <option value="ADMIN">Administrador</option>
