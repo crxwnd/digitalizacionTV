@@ -24,52 +24,38 @@ const Dashboard: React.FC = () => {
     users: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadStats();
-  }, [isAdmin]);
+  }, []);
 
   const loadStats = async () => {
     try {
-      setLoading(true);
-      setError(null);
-
-      // Cargar pantallas y calcular stats manualmente
       const screensRes = await screensAPI.getAll();
       const screens = screensRes.data || [];
-
-      const screensStats = {
-        total: screens.length,
-        online: screens.filter((s: any) => s.online).length,
-        offline: screens.filter((s: any) => !s.online).length,
-        approved: screens.filter((s: any) => s.approved).length,
-        pending: screens.filter((s: any) => !s.approved).length,
-      };
-
-      // Cargar áreas
-      const areasRes = await areasAPI.getAll();
       
+      const areasRes = await areasAPI.getAll();
+
       const newStats: Stats = {
-        screens: screensStats,
-        areas: areasRes.data?.length || 0,
+        screens: {
+          total: screens.length,
+          online: screens.filter((s: any) => s.online).length,
+          offline: screens.filter((s: any) => !s.online).length,
+          approved: screens.filter((s: any) => s.approved).length,
+          pending: screens.filter((s: any) => !s.approved).length,
+        },
+        areas: areasRes.data.length,
         users: 0,
       };
 
-      // Cargar usuarios solo si es admin
       if (isAdmin) {
-        try {
-          const usersRes = await usersAPI.getAll();
-          newStats.users = usersRes.data?.length || 0;
-        } catch (err) {
-          console.error('Error al cargar usuarios:', err);
-        }
+        const usersRes = await usersAPI.getAll();
+        newStats.users = usersRes.data.length;
       }
 
       setStats(newStats);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al cargar estadísticas:', error);
-      setError('Error al cargar estadísticas');
     } finally {
       setLoading(false);
     }
@@ -79,22 +65,6 @@ const Dashboard: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="loading-spinner" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="glass-card rounded-2xl p-8 max-w-md text-center">
-          <svg className="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h3 className="text-lg font-semibold text-primary mb-2">{error}</h3>
-          <button onClick={loadStats} className="btn-primary mt-4">
-            Reintentar
-          </button>
-        </div>
       </div>
     );
   }
@@ -223,35 +193,40 @@ const Dashboard: React.FC = () => {
       {/* Información adicional */}
       <div className="glass-card rounded-2xl p-6">
         <h3 className="text-lg font-semibold text-primary mb-4">
-          Resumen General
+          Sistema de Señalización Digital
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="text-4xl font-bold text-primary mb-2">
-              {stats.areas}
-            </div>
-            <p className="text-primary/60">Áreas Totales</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-primary/70">
+          <div>
+            <p className="font-medium text-primary mb-1">Funcionalidades</p>
+            <ul className="space-y-1">
+              <li>• Gestión de pantallas en tiempo real</li>
+              <li>• Monitoreo de estado online/offline</li>
+              <li>• Sistema de aprobación de pantallas</li>
+            </ul>
           </div>
-          <div className="text-center">
-            <div className="text-4xl font-bold text-primary mb-2">
-              {stats.screens.total}
-            </div>
-            <p className="text-primary/60">Pantallas Totales</p>
+          <div>
+            <p className="font-medium text-primary mb-1">Características</p>
+            <ul className="space-y-1">
+              <li>• Heartbeat automático cada minuto</li>
+              <li>• Organización por áreas</li>
+              <li>• Gestión de usuarios y permisos</li>
+            </ul>
           </div>
-          {isAdmin && (
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">
-                {stats.users}
-              </div>
-              <p className="text-primary/60">Usuarios Totales</p>
-            </div>
-          )}
+          <div>
+            <p className="font-medium text-primary mb-1">Seguridad</p>
+            <ul className="space-y-1">
+              <li>• Autenticación JWT</li>
+              <li>• Control de acceso por roles</li>
+              <li>• Registro de actividades</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
+// Componente StatCard
 const StatCard: React.FC<{
   title: string;
   value: number;
@@ -271,6 +246,7 @@ const StatCard: React.FC<{
   </div>
 );
 
+// Componente ProgressBar
 const ProgressBar: React.FC<{
   label: string;
   value: number;
@@ -295,6 +271,7 @@ const ProgressBar: React.FC<{
   );
 };
 
+// Componente QuickLink
 const QuickLink: React.FC<{
   to: string;
   icon: React.ReactNode;
