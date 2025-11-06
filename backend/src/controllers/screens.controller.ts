@@ -487,34 +487,17 @@ export const heartbeat = async (req: AuthRequest, res: Response): Promise<void> 
 // 📊 Obtener estadísticas de pantallas
 export const getScreenStats = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const screens = await prisma.screen.findMany();
+    
+    const stats = {
+      total: screens.length,
+      online: screens.filter(s => s.online).length,
+      offline: screens.filter(s => !s.online).length,
+      approved: screens.filter(s => s.approved).length,
+      pending: screens.filter(s => !s.approved).length,
+    };
 
-    let whereClause = {};
-
-    if (userRole === 'MANAGER') {
-      whereClause = {
-        area: {
-          managerId: userId,
-        },
-      };
-    }
-
-    const [total, online, offline, approved, pending] = await Promise.all([
-      prisma.screen.count({ where: whereClause }),
-      prisma.screen.count({ where: { ...whereClause, online: true } }),
-      prisma.screen.count({ where: { ...whereClause, online: false } }),
-      prisma.screen.count({ where: { ...whereClause, approved: true } }),
-      prisma.screen.count({ where: { ...whereClause, approved: false } }),
-    ]);
-
-    res.json({
-      total,
-      online,
-      offline,
-      approved,
-      pending,
-    });
+    res.json(stats);
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
     res.status(500).json({ error: 'Error al obtener estadísticas' });

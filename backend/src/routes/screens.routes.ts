@@ -25,14 +25,14 @@ router.get('/stats', authorizeRoles('ADMIN', 'MANAGER'), getScreenStats);
 // 📋 Listar pantallas (ADMIN y MANAGER)
 router.get('/', authorizeRoles('ADMIN', 'MANAGER'), getAllScreens);
 
-// 🔍 Obtener por ID (ADMIN y MANAGER)
-router.get('/:id', authorizeRoles('ADMIN', 'MANAGER'), getScreenById);
-
 // 🔍 Obtener por código (para el player)
 router.get('/code/:code', getScreenByCode);
 
 // 💓 Heartbeat (cualquier usuario autenticado)
 router.post('/heartbeat/:code', heartbeat);
+
+// 🔍 Obtener por ID (ADMIN y MANAGER)
+router.get('/:id', authorizeRoles('ADMIN', 'MANAGER'), getScreenById);
 
 // ➕ Registrar nueva pantalla (ADMIN y MANAGER)
 router.post('/', authorizeRoles('ADMIN', 'MANAGER'), registerScreen);
@@ -48,5 +48,6 @@ router.patch('/:id/approve', authorizeRoles('ADMIN'), approveScreen);
 
 // ❌ Rechazar pantalla (solo ADMIN)
 router.patch('/:id/reject', authorizeRoles('ADMIN'), rejectScreen);
+
 
 export default router;
