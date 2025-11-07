@@ -16,38 +16,35 @@ import { authenticate, authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
-// 🔒 Todas las rutas requieren autenticación
-router.use(authenticate);
-
-// 📊 Estadísticas (ADMIN y MANAGER)
-router.get('/stats', authorizeRoles('ADMIN', 'MANAGER'), getScreenStats);
-
-// 📋 Listar pantallas (ADMIN y MANAGER)
-router.get('/', authorizeRoles('ADMIN', 'MANAGER'), getAllScreens);
-
-// 🔍 Obtener por código (para el player)
-router.get('/code/:code', getScreenByCode);
-
-// 💓 Heartbeat (cualquier usuario autenticado)
+// 💓 HEARTBEAT - NO requiere autenticación (para que las pantallas puedan reportar)
 router.post('/heartbeat/:code', heartbeat);
 
+// 🔍 Obtener por código - NO requiere autenticación (para el player inicial)
+router.get('/code/:code', getScreenByCode);
+
+// === RUTAS PROTEGIDAS (requieren autenticación) ===
+// 📊 Estadísticas (ADMIN y MANAGER)
+router.get('/stats', authenticate, authorizeRoles('ADMIN', 'MANAGER'), getScreenStats);
+
+// 📋 Listar pantallas (ADMIN y MANAGER)
+router.get('/', authenticate, authorizeRoles('ADMIN', 'MANAGER'), getAllScreens);
+
 // 🔍 Obtener por ID (ADMIN y MANAGER)
-router.get('/:id', authorizeRoles('ADMIN', 'MANAGER'), getScreenById);
+router.get('/:id', authenticate, authorizeRoles('ADMIN', 'MANAGER'), getScreenById);
 
 // ➕ Registrar nueva pantalla (ADMIN y MANAGER)
-router.post('/', authorizeRoles('ADMIN', 'MANAGER'), registerScreen);
+router.post('/', authenticate, authorizeRoles('ADMIN', 'MANAGER'), registerScreen);
 
 // ✏️ Actualizar pantalla (ADMIN y MANAGER)
-router.put('/:id', authorizeRoles('ADMIN', 'MANAGER'), updateScreen);
+router.put('/:id', authenticate, authorizeRoles('ADMIN', 'MANAGER'), updateScreen);
 
 // 🗑️ Eliminar pantalla (ADMIN y MANAGER)
-router.delete('/:id', authorizeRoles('ADMIN', 'MANAGER'), deleteScreen);
+router.delete('/:id', authenticate, authorizeRoles('ADMIN', 'MANAGER'), deleteScreen);
 
 // ✅ Aprobar pantalla (solo ADMIN)
-router.patch('/:id/approve', authorizeRoles('ADMIN'), approveScreen);
+router.patch('/:id/approve', authenticate, authorizeRoles('ADMIN'), approveScreen);
 
 // ❌ Rechazar pantalla (solo ADMIN)
-router.patch('/:id/reject', authorizeRoles('ADMIN'), rejectScreen);
-
+router.patch('/:id/reject', authenticate, authorizeRoles('ADMIN'), rejectScreen);
 
 export default router;
