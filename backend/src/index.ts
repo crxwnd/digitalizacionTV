@@ -8,7 +8,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-//Importacion de rutas
+// Importar rutas
 import authRoutes from './routes/auth.routes';
 import usersRoutes from './routes/users.routes';
 import areasRoutes from './routes/areas.routes';
@@ -21,7 +21,7 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
 
-//Configurar Socket.IO para WebSockets
+// Configurar Socket.IO para WebSockets
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -29,13 +29,13 @@ const io = new Server(httpServer, {
   },
 });
 
-//Configurar directorio de uploads
+// Configurar directorio de uploads
 const uploadPath = process.env.UPLOAD_PATH || './uploads';
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
 }
 
-//Middlewares
+// 🔧 Middlewares
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
@@ -47,7 +47,7 @@ app.use(cookieParser());
 // Servir archivos estáticos (contenido multimedia)
 app.use('/uploads', express.static(uploadPath));
 
-//Rutas
+// 📋 Rutas
 app.get('/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
