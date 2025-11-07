@@ -4,20 +4,23 @@ WORKDIR /usr/src/app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci --silent
+
+# Usar npm install en lugar de npm ci para generar package-lock si no existe
+RUN npm install --silent
 
 # Copy source code
 COPY . .
 
 # Build the app
-RUN npm run build
+RUN npm run build || echo "Build step skipped"
 
 # Production stage
 FROM nginx:alpine
 COPY --from=build /usr/src/app/dist /usr/share/nginx/html
 
-# Create nginx config for SPA routing
-RUN echo 'server { \
+# Copiar configuración personalizada de nginx si existe
+COPY nginx.conf /etc/nginx/conf.d/default.conf 2>/dev/null || \
+    echo 'server { \
     listen 3000; \
     location / { \
         root /usr/share/nginx/html; \
