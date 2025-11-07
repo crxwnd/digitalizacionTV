@@ -9,24 +9,24 @@ RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists
 # Copiar package files
 COPY package*.json ./
 
-# Instalar dependencias usando npm install
+# Instalar dependencias (usar npm install en lugar de ci para desarrollo)
 RUN npm install --silent
 
 # Copiar código fuente
 COPY . .
 
 # Generar Prisma Client
-RUN npx prisma generate || echo "Prisma generate skipped"
+RUN npx prisma generate
 
-# Compilar TypeScript si existe tsconfig
-RUN npm run build || echo "Build step skipped"
+# Compilar TypeScript
+RUN npm run build || echo "No build step defined"
 
-# Crear directorio de uploads
-RUN mkdir -p /app/uploads
+# Copiar entrypoint
+COPY entrypoint.sh /usr/src/app/entrypoint.sh
+RUN chmod +x /usr/src/app/entrypoint.sh
 
 ENV NODE_ENV=development
 
 EXPOSE 5000
 
-# Usar node directamente si no hay dist, o el archivo compilado si existe
-CMD ["sh", "-c", "if [ -f dist/index.js ]; then node dist/index.js; else node src/index.js || npx tsx src/index.ts; fi"]
+CMD ["sh", "/usr/src/app/entrypoint.sh"]
