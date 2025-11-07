@@ -1,3 +1,6 @@
+// backend/prisma/schema.prisma
+// ESQUEMA COMPLETO DE BASE DE DATOS PARA DIGITALIZACIONTV
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,46 +10,214 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ========================================
+// 👤 USUARIO DEL SISTEMA
+// ========================================
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  name      String
   password  String
+  name      String
   role      Role     @default(MANAGER)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  areas     Area[]   @relation("manager_areas")
+
+  // Relaciones
+  managedAreas     Area[]
+  uploadedContent  Content[]
+  createdPlaylists Playlist[]
+  notifications    Notification[]
+  screenLogs       ScreenLog[]
+
+  @@index([email])
+  @@index([role])
 }
 
+// ========================================
+// 🏢 ÁREA (DEPARTAMENTO DEL HOTEL)
+// ========================================
 model Area {
-  id        Int       @id @default(autoincrement())
-  name      String
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
   description String?
-  managerId Int
-  manager   User      @relation(fields: [managerId], references: [id], name: "manager_areas", onDelete: Cascade)
-  screens   Screen[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  managerId   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  manager       User?          @relation(fields: [managerId], references: [id])
+  screens       Screen[]
+  content       Content[]
+  playlists     Playlist[]
+  notifications Notification[]
+
+  @@index([managerId])
 }
 
+// ========================================
+// 📺 PANTALLA
+// ========================================
 model Screen {
-  id            Int      @id @default(autoincrement())
-  name          String
-  code          String   @unique  // Código único generado
-  ip            String?  @unique  // IP estática
-  areaId        Int
-  area          Area     @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  approved      Boolean  @default(false)  // Requiere aprobación del admin
-  online        Boolean  @default(false)  // Estado online/offline
-  lastHeartbeat DateTime?  // Última señal de vida
-  currentContent String?  // Contenido actual mostrado
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             Int       @id @default(autoincrement())
+  code           String    @unique  // Código único (ej: SCR-ABC123)
+  name           String
+  ipAddress      String?
+  areaId         Int?
+  online         Boolean   @default(false)
+  approved       Boolean   @default(false)
+  lastHeartbeat  DateTime?
+  currentContent String?   @db.Text  // JSON con contenido actual
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relaciones
+  area Area?       @relation(fields: [areaId], references: [id])
+  logs ScreenLog[]
+
+  @@index([code])
+  @@index([areaId])
+  @@index([online])
+  @@index([approved])
 }
 
+// ========================================
+// 📁 CONTENIDO MULTIMEDIA
+// ========================================
+model Content {
+  id           Int         @id @default(autoincrement())
+  title        String
+  description  String?
+  type         ContentType
+  filePath     String      // Ruta al archivo
+  fileSize     BigInt      // Tamaño en bytes
+  mimeType     String
+  duration     Int?        // Duración en segundos para videos
+  uploadedById Int
+  areaId       Int?
+  schedule     Json?       // Programación de reproducción
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relaciones
+  uploadedBy User      @relation(fields: [uploadedById], references: [id])
+  area       Area?     @relation(fields: [areaId], references: [id])
+  playlist   Playlist? @relation(fields: [playlistId], references: [id])
+  playlistId Int?
+
+  @@index([type])
+  @@index([uploadedById])
+  @@index([areaId])
+  @@index([active])
+}
+
+// ========================================
+// 📝 PLAYLIST DE CONTENIDO
+// ========================================
+model Playlist {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  areaId      Int?
+  createdById Int
+  contentIds  Int[]    // Array de IDs de contenido
+  loop        Boolean  @default(true)
+  shuffle     Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  area      Area?     @relation(fields: [areaId], references: [id])
+  createdBy User      @relation(fields: [createdById], references: [id])
+  content   Content[]
+
+  @@index([areaId])
+  @@index([createdById])
+  @@index([active])
+}
+
+// ========================================
+// 📢 NOTIFICACIONES/AVISOS
+// ========================================
+model Notification {
+  id           Int                  @id @default(autoincrement())
+  title        String
+  message      String               @db.Text
+  type         NotificationType
+  priority     NotificationPriority
+  areaId       Int?
+  screenCodes  String[]             // Códigos de pantallas específicas
+  duration     Int                  @default(30) // Duración en segundos
+  createdById  Int
+  active       Boolean              @default(true)
+  displayedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  // Relaciones
+  area      Area? @relation(fields: [areaId], references: [id])
+  createdBy User  @relation(fields: [createdById], references: [id])
+
+  @@index([type])
+  @@index([priority])
+  @@index([areaId])
+  @@index([active])
+  @@index([createdAt])
+}
+
+// ========================================
+// 📊 LOGS DE PANTALLA
+// ========================================
+model ScreenLog {
+  id        Int      @id @default(autoincrement())
+  screenId  Int
+  action    String   // Ej: HEARTBEAT, CONTENT_CHANGE, REMOTE_PLAY, etc
+  details   Json?    // Detalles adicionales en JSON
+  userId    Int?
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  screen Screen @relation(fields: [screenId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([screenId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ========================================
+// ENUMS
+// ========================================
+
+// Roles de usuario
 enum Role {
-  ADMIN
-  MANAGER
-  PLAYER
+  ADMIN    // Administrador principal
+  MANAGER  // Gestor de área
+}
+
+// Tipos de contenido
+enum ContentType {
+  IMAGE         // Imágenes (JPG, PNG, etc)
+  VIDEO         // Videos (MP4, etc)
+  PRESENTATION  // Presentaciones (PDF, PPT)
+  HTML          // Contenido HTML
+  URL           // URL externa
+}
+
+// Tipos de notificación
+enum NotificationType {
+  INFO      // Información general
+  WARNING   // Advertencia
+  ALERT     // Alerta importante
+  EMERGENCY // Emergencia
+}
+
+// Prioridad de notificación
+enum NotificationPriority {
+  LOW     // Baja prioridad
+  NORMAL  // Prioridad normal
+  HIGH    // Alta prioridad
+  URGENT  // Urgente (se muestra inmediatamente)
 }
