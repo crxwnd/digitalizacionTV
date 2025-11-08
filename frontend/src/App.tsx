@@ -1,118 +1,97 @@
 // frontend/src/App.tsx
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-
-// Pages
+import { useState, useEffect } from 'react';
+import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Areas from './pages/Areas';
 import Screens from './pages/Screens';
 import Users from './pages/Users';
+import Content from './pages/Content';
+import Notifications from './pages/Notifications';
+import ScreenMonitor from './pages/ScreenMonitor';
 import Player from './pages/Player';
 
-// Components
-import DashboardLayout from './components/DashboardLayout';
-
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({
-  children,
-  adminOnly = false,
-}) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-lighter">
-        <div className="loading-spinner" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (adminOnly && user.role !== 'ADMIN') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-// Public Route Component (redirect if already logged in)
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-lighter">
-        <div className="loading-spinner" />
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-function AppRoutes() {
-  return (
-    <Routes>
-      {/* Public Routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-      
-      {/* Player Route (special case - requires code parameter) */}
-      <Route path="/player/:code" element={<Player />} />
-
-      {/* Protected Routes with Layout */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="areas" element={<Areas />} />
-        <Route path="screens" element={<Screens />} />
-        
-        {/* Admin Only Routes */}
-        <Route
-          path="users"
-          element={
-            <ProtectedRoute adminOnly>
-              <Users />
-            </ProtectedRoute>
-          }
-        />
-      </Route>
-
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
-  );
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'MANAGER';
 }
 
 function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (token && storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error al parsear usuario:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+    
+    setLoading(false);
+  }, []);
+
+  const handleLogin = (userData: User, token: string) => {
+    setUser(userData);
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
+        <div className="loading-spinner" />
+      </div>
+    );
+  }
+
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        {/* Ruta del Player (pública) */}
+        <Route path="/player/:code" element={<Player />} />
+
+        {/* Rutas protegidas */}
+        {!user ? (
+          <>
+            <Route path="/login" element={<Login onLogin={handleLogin} />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </>
+        ) : (
+          <Route element={<Layout user={user} onLogout={handleLogout} />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/areas" element={<Areas />} />
+            <Route path="/screens" element={<Screens />} />
+            <Route path="/content" element={<Content />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/monitor" element={<ScreenMonitor />} />
+            
+            {/* Ruta de usuarios solo para ADMIN */}
+            {user.role === 'ADMIN' && (
+              <Route path="/users" element={<Users />} />
+            )}
+            
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+        )}
+      </Routes>
+    </BrowserRouter>
   );
 }
 

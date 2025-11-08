@@ -16,7 +16,13 @@ import { authenticate, authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
-// 🔒 Todas las rutas requieren autenticación
+// 💓 Heartbeat PÚBLICO (sin autenticación) - DEBE IR PRIMERO
+router.post('/heartbeat/:code', heartbeat);
+
+// 🔍 Obtener por código PÚBLICO (para el player)
+router.get('/code/:code', getScreenByCode);
+
+// 🔒 Todas las demás rutas requieren autenticación
 router.use(authenticate);
 
 // 📊 Estadísticas (ADMIN y MANAGER)
@@ -24,12 +30,6 @@ router.get('/stats', authorizeRoles('ADMIN', 'MANAGER'), getScreenStats);
 
 // 📋 Listar pantallas (ADMIN y MANAGER)
 router.get('/', authorizeRoles('ADMIN', 'MANAGER'), getAllScreens);
-
-// 🔍 Obtener por código (para el player)
-router.get('/code/:code', getScreenByCode);
-
-// 💓 Heartbeat (cualquier usuario autenticado)
-router.post('/heartbeat/:code', heartbeat);
 
 // 🔍 Obtener por ID (ADMIN y MANAGER)
 router.get('/:id', authorizeRoles('ADMIN', 'MANAGER'), getScreenById);
@@ -48,6 +48,5 @@ router.patch('/:id/approve', authorizeRoles('ADMIN'), approveScreen);
 
 // ❌ Rechazar pantalla (solo ADMIN)
 router.patch('/:id/reject', authorizeRoles('ADMIN'), rejectScreen);
-
 
 export default router;

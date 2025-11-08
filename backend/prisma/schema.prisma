@@ -1,3 +1,4 @@
+// backend/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,46 +8,109 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  password  String
-  role      Role     @default(MANAGER)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  areas     Area[]   @relation("manager_areas")
-}
-
-model Area {
-  id        Int       @id @default(autoincrement())
-  name      String
-  description String?
-  managerId Int
-  manager   User      @relation(fields: [managerId], references: [id], name: "manager_areas", onDelete: Cascade)
-  screens   Screen[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Screen {
-  id            Int      @id @default(autoincrement())
-  name          String
-  code          String   @unique  // Código único generado
-  ip            String?  @unique  // IP estática
-  areaId        Int
-  area          Area     @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  approved      Boolean  @default(false)  // Requiere aprobación del admin
-  online        Boolean  @default(false)  // Estado online/offline
-  lastHeartbeat DateTime?  // Última señal de vida
-  currentContent String?  // Contenido actual mostrado
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
 enum Role {
   ADMIN
   MANAGER
-  PLAYER
+}
+
+enum ContentType {
+  IMAGE
+  VIDEO
+  PRESENTATION
+  HTML
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(MANAGER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  areas         Area[]
+  content       Content[]
+  notifications Notification[]
+}
+
+model Area {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  managerId   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  manager User     @relation(fields: [managerId], references: [id])
+  screens Screen[]
+  content Content[]
+}
+
+model Screen {
+  id              Int       @id @default(autoincrement())
+  name            String
+  code            String    @unique
+  location        String?
+  ipAddress       String?
+  areaId          Int
+  approved        Boolean   @default(false)
+  online          Boolean   @default(false)
+  lastHeartbeat   DateTime?
+  currentContent  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  area            Area              @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  assignedContent ContentScreen[]
+}
+
+model Content {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  type        ContentType
+  url         String
+  fileSize    Int?
+  duration    Int?
+  areaId      Int?
+  createdById Int
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  area      Area?           @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  createdBy User            @relation(fields: [createdById], references: [id])
+  screens   ContentScreen[]
+}
+
+model ContentScreen {
+  id        Int      @id @default(autoincrement())
+  contentId Int
+  screenId  Int
+  order     Int      @default(0)
+  duration  Int      @default(10)
+  createdAt DateTime @default(now())
+  
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  screen  Screen  @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  
+  @@unique([contentId, screenId])
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  title       String
+  message     String
+  type        String   @default("info")
+  priority    Int      @default(1)
+  active      Boolean  @default(true)
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  createdById Int
+  areaId      Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  createdBy User @relation(fields: [createdById], references: [id])
 }
