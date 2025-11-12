@@ -1,4 +1,5 @@
 // frontend/src/App.tsx
+//Cambio prueba
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Layout from './components/Layout';
