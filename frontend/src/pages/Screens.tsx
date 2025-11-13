@@ -1,7 +1,7 @@
 // frontend/src/pages/Screens.tsx
 import React, { useEffect, useState } from 'react';
 import { screensAPI, areasAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Screen {
   id: number;

@@ -8,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambialo-e
 
 export interface JWTPayload {
   userId: number;
+  id: number; // Mantener por compatibilidad
   email: string;
   role: Role;
 }
@@ -25,12 +26,19 @@ export const authenticate = async (
     const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      res.status(401).json({ error: 'Token no proporcionado' });
+      res.status(401).json({ error: 'No autorizado - Token no proporcionado' });
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    req.user = decoded;
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Compatibilidad: si viene 'id', usarlo como 'userId'
+    req.user = {
+      userId: decoded.userId || decoded.id,
+      id: decoded.id || decoded.userId,
+      email: decoded.email,
+      role: decoded.role
+    };
 
     next();
   } catch (error) {

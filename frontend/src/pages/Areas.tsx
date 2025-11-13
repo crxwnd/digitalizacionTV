@@ -1,7 +1,7 @@
 // frontend/src/pages/Areas.tsx
 import React, { useEffect, useState } from 'react';
 import { areasAPI, usersAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Area {
   id: number;

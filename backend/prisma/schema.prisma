@@ -26,12 +26,14 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(MANAGER)
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  areas         Area[]
-  content       Content[]
-  notifications Notification[]
+  areas              Area[]
+  content            Content[]       @relation("UserContent")
+  notifications      Notification[]
+  createdScreens     Screen[]        @relation("ScreenCreator")
 }
 
 model Area {
@@ -58,10 +60,12 @@ model Screen {
   online          Boolean   @default(false)
   lastHeartbeat   DateTime?
   currentContent  String?
+  createdById     Int?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
   area            Area              @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  createdBy       User?             @relation("ScreenCreator", fields: [createdById], references: [id])
   assignedContent ContentScreen[]
 }
 
@@ -80,7 +84,7 @@ model Content {
   updatedAt   DateTime    @updatedAt
   
   area      Area?           @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  createdBy User            @relation(fields: [createdById], references: [id])
+  createdBy User            @relation("UserContent", fields: [createdById], references: [id])
   screens   ContentScreen[]
 }
 

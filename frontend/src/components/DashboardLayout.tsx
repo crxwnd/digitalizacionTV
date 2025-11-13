@@ -1,7 +1,7 @@
 // frontend/src/components/DashboardLayout.tsx
 import React from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const DashboardLayout: React.FC = () => {
   const { user, logout, isAdmin } = useAuth();

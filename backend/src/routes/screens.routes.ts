@@ -16,17 +16,19 @@ import { authenticate, authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
-// 💓 Heartbeat PÚBLICO (sin autenticación) - DEBE IR PRIMERO
+// ⚠️ IMPORTANTE: Las rutas públicas DEBEN ir ANTES de authenticate
+
+// 💓 Heartbeat PÚBLICO (sin autenticación)
 router.post('/heartbeat/:code', heartbeat);
 
 // 🔍 Obtener por código PÚBLICO (para el player)
 router.get('/code/:code', getScreenByCode);
 
-// 🔒 Todas las demás rutas requieren autenticación
-router.use(authenticate);
+// 📊 Estadísticas PÚBLICO (para monitoreo)
+router.get('/stats', getScreenStats);
 
-// 📊 Estadísticas (ADMIN y MANAGER)
-router.get('/stats', authorizeRoles('ADMIN', 'MANAGER'), getScreenStats);
+// 🔒 A partir de aquí, todas las rutas requieren autenticación
+router.use(authenticate);
 
 // 📋 Listar pantallas (ADMIN y MANAGER)
 router.get('/', authorizeRoles('ADMIN', 'MANAGER'), getAllScreens);

@@ -2,31 +2,31 @@
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
-import { generateScreenCode } from '../utils/screenCode';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
-// 📋 Listar pantallas (ADMIN ve todas, MANAGER solo de sus áreas)
+// 📋 Obtener todas las pantallas
 export const getAllScreens = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userRole = req.user?.role;
-    const userId = req.user?.id;
-
+    const { role, userId } = req.user!;
+    
     let screens;
-
-    if (userRole === 'ADMIN') {
+    if (role === 'ADMIN') {
       // Admin ve todas las pantallas
       screens = await prisma.screen.findMany({
         include: {
           area: {
-            include: {
-              manager: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
         },
@@ -44,14 +44,16 @@ export const getAllScreens = async (req: AuthRequest, res: Response): Promise<vo
         },
         include: {
           area: {
-            include: {
-              manager: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
         },
@@ -63,8 +65,8 @@ export const getAllScreens = async (req: AuthRequest, res: Response): Promise<vo
 
     res.json(screens);
   } catch (error) {
-    console.error('Error al listar pantallas:', error);
-    res.status(500).json({ error: 'Error al listar pantallas' });
+    console.error('Error al obtener pantallas:', error);
+    res.status(500).json({ error: 'Error al obtener pantallas' });
   }
 };
 
@@ -72,21 +74,23 @@ export const getAllScreens = async (req: AuthRequest, res: Response): Promise<vo
 export const getScreenById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const { role, userId } = req.user!;
 
     const screen = await prisma.screen.findUnique({
       where: { id: parseInt(id) },
       include: {
         area: {
-          include: {
-            manager: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            name: true,
+            managerId: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
       },
@@ -97,9 +101,9 @@ export const getScreenById = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Si es MANAGER, verificar que sea de su área
-    if (userRole === 'MANAGER' && screen.area.managerId !== userId) {
-      res.status(403).json({ error: 'No tienes permiso para ver esta pantalla' });
+    // Verificar permisos para Manager
+    if (role === 'MANAGER' && screen.area?.managerId !== userId) {
+      res.status(403).json({ error: 'No tienes permisos para ver esta pantalla' });
       return;
     }
 
@@ -110,8 +114,8 @@ export const getScreenById = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
-// 🔍 Obtener pantalla por código (para el player)
-export const getScreenByCode = async (req: AuthRequest, res: Response): Promise<void> => {
+// 🔍 Obtener pantalla por código (PÚBLICO - para player)
+export const getScreenByCode = async (req: any, res: Response): Promise<void> => {
   try {
     const { code } = req.params;
 
@@ -122,7 +126,6 @@ export const getScreenByCode = async (req: AuthRequest, res: Response): Promise<
           select: {
             id: true,
             name: true,
-            description: true,
           },
         },
       },
@@ -133,14 +136,9 @@ export const getScreenByCode = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    if (!screen.approved) {
-      res.status(403).json({ error: 'Pantalla pendiente de aprobación' });
-      return;
-    }
-
     res.json(screen);
   } catch (error) {
-    console.error('Error al obtener pantalla:', error);
+    console.error('Error al obtener pantalla por código:', error);
     res.status(500).json({ error: 'Error al obtener pantalla' });
   }
 };
@@ -148,76 +146,42 @@ export const getScreenByCode = async (req: AuthRequest, res: Response): Promise<
 // ➕ Registrar nueva pantalla
 export const registerScreen = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, ip, areaId } = req.body;
-    const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const { name, location, ipAddress, areaId } = req.body;
+    const { userId } = req.user!;
 
     // Validar datos requeridos
-    if (!name || !areaId) {
-      res.status(400).json({ error: 'Nombre y área son requeridos' });
+    if (!name || !ipAddress) {
+      res.status(400).json({ error: 'Nombre e IP son requeridos' });
       return;
-    }
-
-    // Verificar que el área existe
-    const area = await prisma.area.findUnique({
-      where: { id: areaId },
-    });
-
-    if (!area) {
-      res.status(404).json({ error: 'Área no encontrada' });
-      return;
-    }
-
-    // Si es MANAGER, verificar que sea su área
-    if (userRole === 'MANAGER' && area.managerId !== userId) {
-      res.status(403).json({ error: 'No tienes permiso para registrar pantallas en esta área' });
-      return;
-    }
-
-    // Verificar si la IP ya existe (si se proporciona)
-    if (ip) {
-      const existingScreen = await prisma.screen.findUnique({
-        where: { ip },
-      });
-
-      if (existingScreen) {
-        res.status(409).json({ error: 'Ya existe una pantalla con esta IP' });
-        return;
-      }
     }
 
     // Generar código único
-    let code: string;
-    let codeExists = true;
-
-    while (codeExists) {
-      code = generateScreenCode();
-      const existing = await prisma.screen.findUnique({
-        where: { code },
-      });
-      codeExists = !!existing;
-    }
+    const code = `SCR-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
     // Crear pantalla
     const screen = await prisma.screen.create({
       data: {
+        code,
         name,
-        code: code!,
-        ip,
-        areaId,
-        approved: userRole === 'ADMIN', // Auto-aprobar si es ADMIN
+        location,
+        ipAddress,
+        approved: false,
         online: false,
+        createdById: userId,
+        areaId: areaId ? parseInt(areaId) : null,
       },
       include: {
         area: {
-          include: {
-            manager: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
       },
@@ -234,9 +198,8 @@ export const registerScreen = async (req: AuthRequest, res: Response): Promise<v
 export const updateScreen = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, ip, areaId } = req.body;
-    const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const { name, location, ipAddress, areaId } = req.body;
+    const { role, userId } = req.user!;
 
     // Verificar que la pantalla existe
     const existingScreen = await prisma.screen.findUnique({
@@ -251,70 +214,39 @@ export const updateScreen = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    // Si es MANAGER, verificar que sea de su área
-    if (userRole === 'MANAGER' && existingScreen.area.managerId !== userId) {
-      res.status(403).json({ error: 'No tienes permiso para editar esta pantalla' });
+    // Verificar permisos para Manager
+    if (role === 'MANAGER' && existingScreen.area?.managerId !== userId) {
+      res.status(403).json({ error: 'No tienes permisos para actualizar esta pantalla' });
       return;
     }
 
-    // Preparar datos de actualización
-    const updateData: any = {};
-
-    if (name) updateData.name = name;
-
-    if (ip && ip !== existingScreen.ip) {
-      // Verificar que la nueva IP no esté en uso
-      const ipExists = await prisma.screen.findUnique({
-        where: { ip },
-      });
-
-      if (ipExists) {
-        res.status(409).json({ error: 'La IP ya está en uso' });
-        return;
-      }
-
-      updateData.ip = ip;
-    }
-
-    if (areaId && areaId !== existingScreen.areaId) {
-      const area = await prisma.area.findUnique({
-        where: { id: areaId },
-      });
-
-      if (!area) {
-        res.status(404).json({ error: 'Área no encontrada' });
-        return;
-      }
-
-      // Si es MANAGER, verificar que la nueva área sea suya
-      if (userRole === 'MANAGER' && area.managerId !== userId) {
-        res.status(403).json({ error: 'No tienes permiso para mover la pantalla a esta área' });
-        return;
-      }
-
-      updateData.areaId = areaId;
-    }
-
     // Actualizar pantalla
-    const updatedScreen = await prisma.screen.update({
+    const screen = await prisma.screen.update({
       where: { id: parseInt(id) },
-      data: updateData,
+      data: {
+        name,
+        location,
+        ipAddress,
+        areaId: areaId ? parseInt(areaId) : null,
+      },
       include: {
         area: {
-          include: {
-            manager: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
       },
     });
 
-    res.json(updatedScreen);
+    res.json(screen);
   } catch (error) {
     console.error('Error al actualizar pantalla:', error);
     res.status(500).json({ error: 'Error al actualizar pantalla' });
@@ -325,24 +257,24 @@ export const updateScreen = async (req: AuthRequest, res: Response): Promise<voi
 export const deleteScreen = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const { role, userId } = req.user!;
 
-    const screen = await prisma.screen.findUnique({
+    // Verificar que la pantalla existe
+    const existingScreen = await prisma.screen.findUnique({
       where: { id: parseInt(id) },
       include: {
         area: true,
       },
     });
 
-    if (!screen) {
+    if (!existingScreen) {
       res.status(404).json({ error: 'Pantalla no encontrada' });
       return;
     }
 
-    // Si es MANAGER, verificar que sea de su área
-    if (userRole === 'MANAGER' && screen.area.managerId !== userId) {
-      res.status(403).json({ error: 'No tienes permiso para eliminar esta pantalla' });
+    // Verificar permisos para Manager
+    if (role === 'MANAGER' && existingScreen.area?.managerId !== userId) {
+      res.status(403).json({ error: 'No tienes permisos para eliminar esta pantalla' });
       return;
     }
 
@@ -362,39 +294,29 @@ export const approveScreen = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const { id } = req.params;
 
-    const screen = await prisma.screen.findUnique({
+    const screen = await prisma.screen.update({
       where: { id: parseInt(id) },
-    });
-
-    if (!screen) {
-      res.status(404).json({ error: 'Pantalla no encontrada' });
-      return;
-    }
-
-    if (screen.approved) {
-      res.status(400).json({ error: 'La pantalla ya está aprobada' });
-      return;
-    }
-
-    const updatedScreen = await prisma.screen.update({
-      where: { id: parseInt(id) },
-      data: { approved: true },
+      data: {
+        approved: true,
+      },
       include: {
         area: {
-          include: {
-            manager: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
       },
     });
 
-    res.json(updatedScreen);
+    res.json(screen);
   } catch (error) {
     console.error('Error al aprobar pantalla:', error);
     res.status(500).json({ error: 'Error al aprobar pantalla' });
@@ -406,42 +328,37 @@ export const rejectScreen = async (req: AuthRequest, res: Response): Promise<voi
   try {
     const { id } = req.params;
 
-    const screen = await prisma.screen.findUnique({
+    const screen = await prisma.screen.update({
       where: { id: parseInt(id) },
-    });
-
-    if (!screen) {
-      res.status(404).json({ error: 'Pantalla no encontrada' });
-      return;
-    }
-
-    const updatedScreen = await prisma.screen.update({
-      where: { id: parseInt(id) },
-      data: { approved: false },
+      data: {
+        approved: false,
+      },
       include: {
         area: {
-          include: {
-            manager: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
       },
     });
 
-    res.json(updatedScreen);
+    res.json(screen);
   } catch (error) {
     console.error('Error al rechazar pantalla:', error);
     res.status(500).json({ error: 'Error al rechazar pantalla' });
   }
 };
 
-// 💓 Heartbeat (actualizar estado online de la pantalla)
-export const heartbeat = async (req: AuthRequest, res: Response): Promise<void> => {
+// 💓 Heartbeat (actualizar estado online de la pantalla) - PÚBLICO
+export const heartbeat = async (req: any, res: Response): Promise<void> => {
   try {
     const { code } = req.params;
     const { currentContent } = req.body;
@@ -484,8 +401,8 @@ export const heartbeat = async (req: AuthRequest, res: Response): Promise<void> 
   }
 };
 
-// 📊 Obtener estadísticas de pantallas
-export const getScreenStats = async (req: AuthRequest, res: Response): Promise<void> => {
+// 📊 Obtener estadísticas de pantallas - PÚBLICO
+export const getScreenStats = async (req: any, res: Response): Promise<void> => {
   try {
     const screens = await prisma.screen.findMany();
     

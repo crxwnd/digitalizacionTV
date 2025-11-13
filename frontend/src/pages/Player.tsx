@@ -45,19 +45,26 @@ const Player = () => {
 
   // Cargar datos de la pantalla
   const loadScreen = useCallback(async () => {
-    if (!code) return;
+    if (!code) {
+      setError('Código de pantalla no proporcionado');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.get(`${API_URL}/api/screens/code/${code}`);
       setScreen(response.data);
       setError(null);
 
-      // Cargar contenido y notificaciones
+      // Cargar contenido y notificaciones si está aprobada
       if (response.data.approved) {
-        loadContent();
-        loadNotifications(response.data.area.id);
+        await loadContent();
+        if (response.data.area) {
+          await loadNotifications(response.data.area.id);
+        }
       }
     } catch (error: any) {
+      console.error('Error al cargar pantalla:', error);
       setError(error.response?.data?.error || 'Error al cargar pantalla');
     } finally {
       setLoading(false);
@@ -66,11 +73,14 @@ const Player = () => {
 
   // Cargar contenido asignado
   const loadContent = async () => {
+    if (!code) return;
+    
     try {
       const response = await axios.get(`${API_URL}/api/content/screen/${code}`);
       setContent(response.data);
     } catch (error) {
       console.error('Error al cargar contenido:', error);
+      setContent([]);
     }
   };
 
@@ -83,6 +93,7 @@ const Player = () => {
       setNotifications(response.data);
     } catch (error) {
       console.error('Error al cargar notificaciones:', error);
+      setNotifications([]);
     }
   };
 
@@ -178,14 +189,14 @@ const Player = () => {
       
       default:
         return (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-            <p className="text-2xl text-primary/60">Tipo de contenido no soportado</p>
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#254D6E] to-[#1a3a52]">
+            <p className="text-2xl text-[#EDECE4]/60">Tipo de contenido no soportado</p>
           </div>
         );
     }
   };
 
-  // Renderizar notificaciones
+  // Obtener color de notificación
   const getNotificationColor = (type: string) => {
     switch(type) {
       case 'alert': return 'bg-red-500';
@@ -197,10 +208,12 @@ const Player = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
+      <div className="min-h-screen flex items-center justify-center" style={{
+        background: 'linear-gradient(135deg, #254D6E 0%, #1a3a52 100%)'
+      }}>
         <div className="text-center">
-          <div className="loading-spinner mx-auto mb-4" />
-          <p className="text-white text-lg">Cargando pantalla...</p>
+          <div className="w-16 h-16 border-4 border-[#B88F69] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-[#EDECE4] text-lg">Cargando pantalla...</p>
         </div>
       </div>
     );
@@ -208,14 +221,18 @@ const Player = () => {
 
   if (error || !screen) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-500 to-red-700 p-8">
-        <div className="glass-card rounded-3xl p-12 max-w-md text-center">
-          <svg className="w-20 h-20 mx-auto text-red-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen flex items-center justify-center p-8" style={{
+        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+      }}>
+        <div className="backdrop-blur-2xl rounded-[32px] p-12 max-w-md text-center shadow-2xl border border-white/20" style={{
+          background: 'rgba(139, 0, 0, 0.3)'
+        }}>
+          <svg className="w-20 h-20 mx-auto text-white mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h2 className="text-2xl font-bold text-primary mb-2">Error</h2>
-          <p className="text-primary/70">{error || 'Pantalla no encontrada'}</p>
-          <p className="text-sm text-primary/50 mt-4">Código: {code}</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Error</h2>
+          <p className="text-white/80">{error || 'Error al cargar pantalla'}</p>
+          <p className="text-sm text-white/60 mt-4">Código: {code}</p>
         </div>
       </div>
     );
@@ -223,18 +240,24 @@ const Player = () => {
 
   if (!screen.approved) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 to-yellow-600 p-8">
-        <div className="glass-card rounded-3xl p-12 max-w-md text-center">
-          <svg className="w-20 h-20 mx-auto text-yellow-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen flex items-center justify-center p-8" style={{
+        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+      }}>
+        <div className="backdrop-blur-2xl rounded-[32px] p-12 max-w-md text-center shadow-2xl border border-white/20" style={{
+          background: 'rgba(217, 119, 6, 0.3)'
+        }}>
+          <svg className="w-20 h-20 mx-auto text-white mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h2 className="text-2xl font-bold text-primary mb-2">Pendiente de Aprobación</h2>
-          <p className="text-primary/70 mb-6">
+          <h2 className="text-2xl font-bold text-white mb-2">Pendiente de Aprobación</h2>
+          <p className="text-white/80 mb-6">
             Esta pantalla está registrada pero aún no ha sido aprobada por el administrador.
           </p>
-          <div className="glass-card rounded-xl p-4 bg-white/50">
-            <p className="text-sm text-primary/70 mb-1">Código de pantalla:</p>
-            <p className="text-2xl font-bold text-primary">{code}</p>
+          <div className="backdrop-blur-xl rounded-2xl p-4 border border-white/30" style={{
+            background: 'rgba(255, 255, 255, 0.2)'
+          }}>
+            <p className="text-sm text-white/70 mb-1">Código de pantalla:</p>
+            <p className="text-2xl font-bold text-white">{code}</p>
           </div>
         </div>
       </div>
@@ -250,13 +273,15 @@ const Player = () => {
         {content.length > 0 && currentContent ? (
           renderContent(currentContent)
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
+          <div className="w-full h-full flex items-center justify-center" style={{
+            background: 'linear-gradient(135deg, #254D6E 0%, #1a3a52 50%, #0f2738 100%)'
+          }}>
             <div className="text-center p-12">
-              <svg className="w-32 h-32 mx-auto mb-6 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-32 h-32 mx-auto mb-6 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              <h2 className="text-4xl font-bold mb-4">{screen.name}</h2>
-              <p className="text-xl text-white/70 mb-2">{screen.area.name}</p>
+              <h2 className="text-4xl font-bold mb-4" style={{ color: '#EDECE4' }}>{screen.name}</h2>
+              <p className="text-xl mb-2" style={{ color: '#B88F69' }}>{screen.area.name}</p>
               <p className="text-white/50">En espera de contenido...</p>
             </div>
           </div>
@@ -293,10 +318,10 @@ const Player = () => {
           {content.map((_, index) => (
             <div
               key={index}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+              className={`rounded-full transition-all duration-300 ${
                 index === currentContentIndex
-                  ? 'bg-white w-8'
-                  : 'bg-white/40'
+                  ? 'w-8 h-3 bg-white'
+                  : 'w-3 h-3 bg-white/40'
               }`}
             />
           ))}
@@ -304,10 +329,12 @@ const Player = () => {
       )}
 
       {/* Info de pantalla (esquina) */}
-      <div className="fixed bottom-6 right-6 z-40 glass-card rounded-xl px-4 py-2 text-xs opacity-50 hover:opacity-100 transition-opacity">
+      <div className="fixed bottom-6 right-6 z-40 backdrop-blur-xl rounded-2xl px-4 py-2 text-xs opacity-50 hover:opacity-100 transition-opacity border border-white/20" style={{
+        background: 'rgba(255, 255, 255, 0.1)'
+      }}>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span>{screen.name} • {code}</span>
+          <span style={{ color: '#EDECE4' }}>{screen.name} • {code}</span>
         </div>
       </div>
     </div>
