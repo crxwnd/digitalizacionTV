@@ -166,7 +166,7 @@ export const registerScreen = async (req: AuthRequest, res: Response): Promise<v
         approved: false,
         online: false,
         createdById: userId,
-        areaId: areaId ? parseInt(areaId) : null,
+        areaId: areaId ? parseInt(areaId) : undefined,
       },
       include: {
         area: {
@@ -225,7 +225,7 @@ export const updateScreen = async (req: AuthRequest, res: Response): Promise<voi
         name,
         location,
         ipAddress,
-        areaId: areaId ? parseInt(areaId) : null,
+        areaId: areaId ? parseInt(areaId) : undefined,
       },
       include: {
         area: {

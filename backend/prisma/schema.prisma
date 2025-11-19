@@ -57,7 +57,7 @@ model Screen {
   code            String    @unique
   location        String?
   ipAddress       String?
-  areaId          Int
+  areaId          Int?
   approved        Boolean   @default(false)
   online          Boolean   @default(false)
   lastHeartbeat   DateTime?
@@ -66,7 +66,7 @@ model Screen {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  area            Area              @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  area            Area?             @relation(fields: [areaId], references: [id], onDelete: Cascade)
   createdBy       User?             @relation("ScreenCreator", fields: [createdById], references: [id])
   assignedContent ContentScreen[]
 

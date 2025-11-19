@@ -1,11 +1,10 @@
 import jwt from 'jsonwebtoken';
 import { JWTPayload } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
 
 export const generateToken = (payload: JWTPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 };
 
 export const verifyToken = (token: string): JWTPayload | null => {

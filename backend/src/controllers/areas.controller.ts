@@ -95,7 +95,7 @@ export const getAreaById = async (req: AuthRequest, res: Response): Promise<void
             id: true,
             name: true,
             code: true,
-            ip: true,
+            ipAddress: true,
             online: true,
             approved: true,
             lastHeartbeat: true,
