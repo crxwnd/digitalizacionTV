@@ -1,10 +1,9 @@
 // backend/src/controllers/auth.controller.ts
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
-
-const prisma = new PrismaClient();
+import { AuthRequest } from '../types';
+import { prisma } from '../lib/prisma';
 
 // 🔑 Login
 export const login = async (req: Request, res: Response): Promise<void> => {
@@ -50,7 +49,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Generar token JWT
     const token = generateToken({
-      id: user.id,
+      userId: user.id,
       email: user.email,
       role: user.role,
     });
@@ -72,10 +71,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 };
 
 // 👤 Obtener perfil del usuario autenticado
-export const getProfile = async (req: Request, res: Response): Promise<void> => {
+export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // El middleware de autenticación ya verificó el token y agregó req.user
-    const userId = (req as any).user?.id;
+    const userId = req.user?.userId;
 
     if (!userId) {
       res.status(401).json({ error: 'No autorizado' });
@@ -107,9 +105,9 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 };
 
 // 🔄 Verificar token
-export const verifyToken = async (req: Request, res: Response): Promise<void> => {
+export const verifyToken = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.userId;
 
     if (!userId) {
       res.status(401).json({ valid: false, error: 'Token inválido' });

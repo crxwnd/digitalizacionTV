@@ -1,10 +1,8 @@
 // backend/src/controllers/screens.controller.ts
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../types';
+import { prisma } from '../lib/prisma';
 import crypto from 'crypto';
-
-const prisma = new PrismaClient();
 
 // 📋 Obtener todas las pantallas
 export const getAllScreens = async (req: AuthRequest, res: Response): Promise<void> => {

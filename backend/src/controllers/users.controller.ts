@@ -1,10 +1,8 @@
 // backend/src/controllers/users.controller.ts
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Response } from 'express';
 import { hashPassword } from '../utils/password';
-import { AuthRequest } from '../middleware/auth';
-
-const prisma = new PrismaClient();
+import { AuthRequest } from '../types';
+import { prisma } from '../lib/prisma';
 
 // 📋 Listar todos los usuarios (solo ADMIN)
 export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -210,7 +208,7 @@ export const deleteUser = async (req: AuthRequest, res: Response): Promise<void>
     const userId = parseInt(id);
 
     // No permitir que un admin se elimine a sí mismo
-    if (req.user?.id === userId) {
+    if (req.user?.userId === userId) {
       res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
       return;
     }
@@ -244,7 +242,7 @@ export const toggleUserStatus = async (req: AuthRequest, res: Response): Promise
     const userId = parseInt(id);
 
     // No permitir que un admin se desactive a sí mismo
-    if (req.user?.id === userId) {
+    if (req.user?.userId === userId) {
       res.status(400).json({ error: 'No puedes desactivar tu propia cuenta' });
       return;
     }

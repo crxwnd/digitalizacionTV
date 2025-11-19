@@ -1,21 +1,10 @@
 // backend/src/middleware/auth.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
+import { AuthRequest, JWTPayload } from '../types';
 
-const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambialo-en-produccion';
-
-export interface JWTPayload {
-  userId: number;
-  id: number; // Mantener por compatibilidad
-  email: string;
-  role: Role;
-}
-
-export interface AuthRequest extends Request {
-  user?: JWTPayload;
-}
 
 export const authenticate = async (
   req: AuthRequest,
@@ -30,15 +19,8 @@ export const authenticate = async (
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    
-    // Compatibilidad: si viene 'id', usarlo como 'userId'
-    req.user = {
-      userId: decoded.userId || decoded.id,
-      id: decoded.id || decoded.userId,
-      email: decoded.email,
-      role: decoded.role
-    };
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    req.user = decoded;
 
     next();
   } catch (error) {

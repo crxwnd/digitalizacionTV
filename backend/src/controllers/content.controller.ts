@@ -1,9 +1,7 @@
 // backend/src/controllers/content.controller.ts
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middleware/auth';
-
-const prisma = new PrismaClient();
+import { AuthRequest } from '../types';
+import { prisma } from '../lib/prisma';
 
 // 📋 Obtener todo el contenido
 export const getAllContent = async (req: AuthRequest, res: Response): Promise<void> => {

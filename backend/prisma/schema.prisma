@@ -43,10 +43,12 @@ model Area {
   managerId   Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   manager User     @relation(fields: [managerId], references: [id])
   screens Screen[]
   content Content[]
+
+  @@index([managerId])
 }
 
 model Screen {
@@ -63,10 +65,15 @@ model Screen {
   createdById     Int?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+
   area            Area              @relation(fields: [areaId], references: [id], onDelete: Cascade)
   createdBy       User?             @relation("ScreenCreator", fields: [createdById], references: [id])
   assignedContent ContentScreen[]
+
+  @@index([areaId])
+  @@index([online])
+  @@index([approved])
+  @@index([lastHeartbeat])
 }
 
 model Content {
@@ -82,10 +89,14 @@ model Content {
   active      Boolean     @default(true)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  
+
   area      Area?           @relation(fields: [areaId], references: [id], onDelete: SetNull)
   createdBy User            @relation("UserContent", fields: [createdById], references: [id])
   screens   ContentScreen[]
+
+  @@index([areaId])
+  @@index([active])
+  @@index([createdById])
 }
 
 model ContentScreen {
@@ -115,6 +126,10 @@ model Notification {
   areaId      Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([active])
+  @@index([areaId])
+  @@index([startDate, endDate])
 }

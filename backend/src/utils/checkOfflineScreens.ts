@@ -1,7 +1,5 @@
 // backend/src/utils/checkOfflineScreens.ts
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 // Tiempo sin heartbeat para considerar una pantalla offline (en minutos)
 const OFFLINE_THRESHOLD_MINUTES = 5;

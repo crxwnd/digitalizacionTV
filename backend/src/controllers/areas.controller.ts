@@ -1,15 +1,13 @@
 // backend/src/controllers/areas.controller.ts
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middleware/auth';
-
-const prisma = new PrismaClient();
+import { AuthRequest } from '../types';
+import { prisma } from '../lib/prisma';
 
 // 📋 Listar áreas (ADMIN ve todas, MANAGER solo las suyas)
 export const getAllAreas = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     let areas;
 
@@ -80,7 +78,7 @@ export const getAreaById = async (req: AuthRequest, res: Response): Promise<void
   try {
     const { id } = req.params;
     const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     const area = await prisma.area.findUnique({
       where: { id: parseInt(id) },
@@ -182,7 +180,7 @@ export const updateArea = async (req: AuthRequest, res: Response): Promise<void>
     const { id } = req.params;
     const { name, description, managerId } = req.body;
     const userRole = req.user?.role;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     // Verificar que el área existe
     const existingArea = await prisma.area.findUnique({
